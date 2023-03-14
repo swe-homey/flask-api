@@ -23,7 +23,7 @@ load_dotenv() #load environment variables
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://'+os.getenv("MYSQL_USERNAME")+ ':' + os.getenv("MYSQL_PASSWORD") + '@localhost/homey_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://'+os.getenv("MYSQL_userName")+ ':' + os.getenv("MYSQL_password") + '@localhost/homey_db'
 
 db = SQLAlchemy(app)
 engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], echo = True)
@@ -33,74 +33,73 @@ session = Session()
 # enums
 
 class PropertyType(str, enum.Enum):
-    RENT = "RENT"
-    SALE = "SALE"
+    RENT = "rent"
+    SALE = "sale"
 
 # models in the database are init here. make sure database parameters do not change!
 # if changing any of the models, drop the table on sqlworkbench first, then reinitialise them.
 # models
-class Accounts(db.Model): 
+class Account(db.Model): 
     __tablename__ = 'UserAccounts'
-    UserID = Column('UserID', Integer, primary_key=True, unique=True)
-    Username = Column('Username', String(100), unique=True)
-    Password = Column('Password', String(100))
-    Email = Column('Email', String(100))
-    SavedListings = Column('SavedListings', Integer)
-    Address = Column('Address', String(100))
+    userID = Column('userID', Integer, primary_key=True, unique=True)
+    userName = Column('userName', String(100), unique=True)
+    password = Column('password', String(100))
+    email = Column('email', String(100))
+    savedListings = Column('savedListings', Integer)
+    address = Column('address', String(100))
 
-    def __init__ (self, UserID, Username, Password, Email, SavedListings, Address):
-        self.UserID = UserID
-        self.Username = Username
-        self.Password = Password
-        self.Email = Email
-        self.SavedListings = SavedListings
-        self.Address = Address
+    def __init__ (self, userID, userName, password, email, savedListings, address):
+        self.userID = userID
+        self.userName = userName
+        self.password = password
+        self.email = email
+        self.savedListings = savedListings
+        self.address = address
 
-    
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 class Property(db.Model):
     __tablename__ = 'Property'
-    PropertyID = Column('PropertyID', String(100), primary_key=True)
-    ClusterID = Column('ClusterID', String(100))
-    PropType = Column('PropType', Enum(PropertyType))
+    id = Column('id', String(100), primary_key=True)
+    clusterId = Column('clusterId', String(100))
+    type = Column('type', Enum(PropertyType))
     # UserSaved = Column('UserSaved', )
 
-    def __init__(self, PropertyID, ClusterID, PropType):
-        self.PropertyID = PropertyID
-        self.ClusterID = ClusterID
-        self.PropType = PropType
+    def __init__(self, id, clusterId, type):
+        self.id = id
+        self.clusterId = clusterId
+        self.type = type
     
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
 class UserSavedProperty(db.Model):
-    __tablename__ = 'SavedListings'
-    UserID = Column('UserID', String(100))
-    PropertyID = Column('PropertyID', String(100))
-    Property = Column('Property', PickleType) 
+    __tablename__ = 'savedListings'
+    userID = Column('userID', String(100))
+    propertyId = Column('propertyId', String(100))
+    property = Column('property', PickleType) 
     __table_args__ = (
-        PrimaryKeyConstraint(UserID, PropertyID),
+        PrimaryKeyConstraint(userID, id),
         {},
     )
 
-    def __init__(self, UserID, PropertyID, Property):
-        self.UserID = UserID
-        self.PropertyID = PropertyID
-        self.Property = Property
+    def __init__(self, userID, id, property):
+        self.userID = userID
+        self.id = id
+        self.property = property
 
     def as_dict(self):
         dicout = {}
         for col in self.__table__.columns:
 
-            if col.name=="UserID":
-                dicout["UserID"] = getattr(self, col.name)
-            if col.name=="PropertyID":
-                dicout["PropertyID"] = getattr(self, col.name)
-            if col.name=="Property":
-                dicout["Property"] = pickle.loads(getattr(self,col.name))
+            if col.name=="userID":
+                dicout["userID"] = getattr(self, col.name)
+            if col.name=="id":
+                dicout["id"] = getattr(self, col.name)
+            if col.name=="property":
+                dicout["property"] = pickle.loads(getattr(self,col.name))
 
         return dicout
 
@@ -108,9 +107,9 @@ class UserSavedProperty(db.Model):
 # routes
 @app.route("/createUser", methods=["POST"])
 def createUser():
-    # data = json.loads('{"UserID": 12, "Username": "hello", "Password": "1234", "Email": "hello@gmail.com", "SavedListings": 9, "Address": "clementi"}')
+    # data = json.loads('{"userID": 12, "userName": "hello", "password": "1234", "email": "hello@gmail.com", "savedListings": 9, "address": "clementi"}')
     data = request.get_json() #get json payload from the post req
-    new_row = Accounts(UserID=data['UserID'], Username=data['Username'], Password=data['Password'], Email=data['Email'], SavedListings=data['SavedListings'], Address=data['Address'])
+    new_row = Account(userID=data['userID'], userName=data['userName'], password=data['password'], email=data['email'], savedListings=data['savedListings'], address=data['address'])
     db.session.add(new_row)
     db.session.commit()
 
@@ -119,10 +118,10 @@ def createUser():
 @app.route("/view/<int:user_id>", methods=["GET"])
 def viewUser(user_id):
     if request.method == 'GET':
-        account = db.session.query(Accounts).filter_by(UserID = user_id)
+        account = db.session.query(Account).filter_by(userID = user_id)
 
         if account.first() is None:
-            return f"Account with UserID {user_id} does not exist"
+            return f"Account with userID {user_id} does not exist"
         
         else:
 
@@ -131,22 +130,22 @@ def viewUser(user_id):
             accout = acc.as_dict()
             return json.dumps(accout)
 
-            # return json.dumps("UserID: {acc.UserID}, Username: {acc.Username}, Password: {acc.Password}, Email: {acc.Email}, SavedListings: {acc.SavedListings}, Address: {acc.Address}}")
+            # return json.dumps("userID: {acc.userID}, userName: {acc.userName}, password: {acc.password}, email: {acc.email}, savedListings: {acc.savedListings}, address: {acc.address}}")
 
 
 
-@app.route("/delete/<int:UserID>", methods=["GET"])
-def deleteUser(UserID):
+@app.route("/delete/<int:userID>", methods=["GET"])
+def deleteUser(userID):
     if request.method == 'GET':
-        account = Accounts.query.filter_by(UserID=UserID).first()
+        account = Account.query.filter_by(userID=userID).first()
         if account is None:
-            return f"Account with UserID {UserID} does not exist"
+            return f"Account with userID {userID} does not exist"
         
         else:
             db.session.delete(account)
             db.session.commit()
 
-            return f"Account with UserID {UserID} has been deleted"
+            return f"Account with userID {userID} has been deleted"
         
     else: 
         return "method not allowed"
@@ -154,16 +153,16 @@ def deleteUser(UserID):
 @app.route("/update/<int:user_id>", methods=["POST"])
 def updateUser(user_id): 
     if request.method =="POST":
-        account = db.session.query(Accounts).filter_by(UserID = user_id)
+        account = db.session.query(Account).filter_by(userID = user_id)
         acc = account[0]
         data = request.get_json()
 
-        acc.UserID = data['UserID']
-        acc.Username = data['Username']
-        acc.Password = data['Password']
-        acc.Email = data['Email']
-        acc.SavedListings = data['SavedListings']
-        acc.Address = data['Address']
+        acc.userID = data['userID']
+        acc.userName = data['userName']
+        acc.password = data['password']
+        acc.email = data['email']
+        acc.savedListings = data['savedListings']
+        acc.address = data['address']
 
         db.session.commit()
 
@@ -177,13 +176,13 @@ def updateUser(user_id):
 
 @app.route("/createProperty", methods=["POST"])
 def createProperty():
-    # data = json.loads('{"PropertyID": 1, "ClusterID": "1", "PropType": "RENT"}')
+    # data = json.loads('{"id": 1, "clusterId": "1", "type": "RENT"}')
     data = request.get_json() #get json payload from the post req
     print(data)
-    if "PropType" not in data:
-        new_row = Property(PropertyID=data['PropertyID'], ClusterID=data['ClusterID'], PropType=PropertyType.RENT)
+    if "type" not in data:
+        new_row = Property(id=data['id'], clusterId=data['clusterId'], type=PropertyType.RENT)
     else:
-        new_row = Property(PropertyID=data['PropertyID'], ClusterID=data['ClusterID'], PropType=data["PropType"])
+        new_row = Property(id=data['id'], clusterId=data['clusterId'], type=data["type"])
     db.session.add(new_row)
     db.session.commit()
 
@@ -192,7 +191,7 @@ def createProperty():
 @app.route("/viewProperty/<int:prop_id>", methods=["GET"])
 def viewProp(prop_id):
     if request.method == 'GET':
-        property = db.session.query(Property).filter_by(PropertyID = prop_id)
+        property = db.session.query(Property).filter_by(id = prop_id)
 
         if property.first() is None:
             return f"Property with PropID {prop_id} does not exist"
@@ -201,13 +200,13 @@ def viewProp(prop_id):
 
             prop = property[0]
             propout = prop.as_dict()
-            print(propout)
+
             return json.dumps(propout)
 
 @app.route("/deleteProperty/<int:prop_id>", methods=["GET"])
 def deleteProperty(prop_id):
     if request.method == 'GET':
-        property = Property.query.filter_by(PropertyID=prop_id).first()
+        property = Property.query.filter_by(id=prop_id).first()
         if property is None:
             return f"Property with Property_ID {prop_id} does not exist"
         
@@ -215,7 +214,7 @@ def deleteProperty(prop_id):
             db.session.delete(property)
             db.session.commit()
 
-            return f"Property with PropertyID {prop_id} has been deleted"
+            return f"Property with id {prop_id} has been deleted"
         
     else: 
         return "method not allowed"
@@ -223,20 +222,20 @@ def deleteProperty(prop_id):
 @app.route("/updateProperty/<int:prop_id>", methods=["POST"])
 def updateProperty(prop_id): 
     if request.method =="POST":
-        property = db.session.query(Property).filter_by(PropertyID = prop_id)
+        property = db.session.query(Property).filter_by(id = prop_id)
         prop = property[0]
         data = request.get_json()
 
-        prop.PropertyID = data['PropertyID']
-        prop.ClusterID = data['ClusterID']
-        prop.PropType = data['PropType']
+        prop.id = data['id']
+        prop.clusterId = data['clusterId']
+        prop.type = data['type']
 
         db.session.commit()
 
         if property.first() is None:
-            return "Account no exist"
+            return "Property no exist"
         else:
-            return "Account successfully updated!"
+            return "Property successfully updated!"
     else: 
         return "update failed"
 
@@ -245,10 +244,10 @@ def updateProperty(prop_id):
 
 @app.route("/createUserSavedProperty", methods=["POST"])
 def createUserSavedProperty():
-    # data = json.loads({"UserID" : "1","PropertyID" : "1", "Property": {"PropertyID": 12, "ClusterID": "1", "PropType": "RENT"}})
+    # data = json.loads({"userID" : "1","id" : "1", "Property": {"id": 12, "clusterId": "1", "type": "RENT"}})
     data = request.get_json()
-    pickledProperty = pickle.dumps(data["Property"])
-    new_row = UserSavedProperty(UserID=data["UserID"], PropertyID=data["PropertyID"], Property=pickledProperty)
+    pickledProperty = pickle.dumps(data["property"])
+    new_row = UserSavedProperty(userID=data["userID"], id=data["id"], property=pickledProperty)
     db.session.add(new_row)
     db.session.commit()
 
@@ -257,9 +256,9 @@ def createUserSavedProperty():
 @app.route("/viewUSP/<int:user_id>", methods=["GET"])
 def viewUSP(user_id):
     if request.method == 'GET':
-        usp = db.session.query(UserSavedProperty).filter_by(UserID = user_id).all()
+        usp = db.session.query(UserSavedProperty).filter_by(userID = user_id).all()
         if len(usp)==0:
-            return f"User with UserID {user_id} has no saved listings"
+            return f"User with userID {user_id} has no saved listings"
         
         else:
             listout = []
@@ -270,7 +269,7 @@ def viewUSP(user_id):
 @app.route("/deleteUSP/<int:user_id>/<int:prop_id>", methods=["GET"])
 def deleteUSP(user_id,prop_id):
     if request.method == 'GET':
-        usp = UserSavedProperty.query.filter_by(UserID = user_id, PropertyID=prop_id).first()
+        usp = UserSavedProperty.query.filter_by(userID = user_id, id=prop_id).first()
         if usp is None:
             return f"USP does not exist"
         
@@ -295,4 +294,4 @@ if __name__ == "__main__":
 #1.1) If user doesn't exists, exit (NOT_FOUND)
 #1.2) if property doesn't exists, create new Property 
 #2) if both property and user exists, create a new UserSavedProperty
-#3) return all UserSavedProperty with matching userId
+#3) return all UserSavedProperty with matching userID
