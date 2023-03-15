@@ -1,0 +1,6 @@
+# Save this file as .env 
+# Add in your username and password below within the quotations
+# Delete everything above this line including this line
+
+MYSQL_USERNAME = ""
+MYSQL_PASSWORD = ""
