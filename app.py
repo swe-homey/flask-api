@@ -23,7 +23,7 @@ load_dotenv() #load environment variables
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://'+os.getenv("MYSQL_userName")+ ':' + os.getenv("MYSQL_password") + '@localhost/homey_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://'+os.getenv("MYSQL_USERNAME")+ ':' + os.getenv("MYSQL_PASSWORD") + '@localhost/homey_db'
 
 db = SQLAlchemy(app)
 engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], echo = True)
@@ -81,13 +81,13 @@ class UserSavedProperty(db.Model):
     propertyId = Column('propertyId', String(100))
     property = Column('property', PickleType) 
     __table_args__ = (
-        PrimaryKeyConstraint(userID, id),
+        PrimaryKeyConstraint(userID, propertyId),
         {},
     )
 
-    def __init__(self, userID, id, property):
+    def __init__(self, userID, propertyId, property):
         self.userID = userID
-        self.id = id
+        self.propertyId = propertyId
         self.property = property
 
     def as_dict(self):
@@ -96,8 +96,8 @@ class UserSavedProperty(db.Model):
 
             if col.name=="userID":
                 dicout["userID"] = getattr(self, col.name)
-            if col.name=="id":
-                dicout["id"] = getattr(self, col.name)
+            if col.name=="propertyId":
+                dicout["propertyId"] = getattr(self, col.name)
             if col.name=="property":
                 dicout["property"] = pickle.loads(getattr(self,col.name))
 
@@ -115,7 +115,7 @@ def createUser():
 
     return "user created"
 
-@app.route("/view/<int:user_id>", methods=["GET"])
+@app.route("/viewUser/<int:user_id>", methods=["GET"])
 def viewUser(user_id):
     if request.method == 'GET':
         account = db.session.query(Account).filter_by(userID = user_id)
@@ -134,7 +134,7 @@ def viewUser(user_id):
 
 
 
-@app.route("/delete/<int:userID>", methods=["GET"])
+@app.route("/deleteUser/<int:userID>", methods=["GET"])
 def deleteUser(userID):
     if request.method == 'GET':
         account = Account.query.filter_by(userID=userID).first()
@@ -150,7 +150,7 @@ def deleteUser(userID):
     else: 
         return "method not allowed"
     
-@app.route("/update/<int:user_id>", methods=["POST"])
+@app.route("/updateUser/<int:user_id>", methods=["POST"])
 def updateUser(user_id): 
     if request.method =="POST":
         account = db.session.query(Account).filter_by(userID = user_id)
@@ -244,10 +244,10 @@ def updateProperty(prop_id):
 
 @app.route("/createUserSavedProperty", methods=["POST"])
 def createUserSavedProperty():
-    # data = json.loads({"userID" : "1","id" : "1", "Property": {"id": 12, "clusterId": "1", "type": "RENT"}})
+    # data = json.loads({"userID" : "1","propertyId" : "1", "property": {"id": 12, "clusterId": "1", "type": "RENT"}})
     data = request.get_json()
     pickledProperty = pickle.dumps(data["property"])
-    new_row = UserSavedProperty(userID=data["userID"], id=data["id"], property=pickledProperty)
+    new_row = UserSavedProperty(userID=data["userID"], propertyId=data["propertyId"], property=pickledProperty)
     db.session.add(new_row)
     db.session.commit()
 
@@ -269,7 +269,7 @@ def viewUSP(user_id):
 @app.route("/deleteUSP/<int:user_id>/<int:prop_id>", methods=["GET"])
 def deleteUSP(user_id,prop_id):
     if request.method == 'GET':
-        usp = UserSavedProperty.query.filter_by(userID = user_id, id=prop_id).first()
+        usp = UserSavedProperty.query.filter_by(userID = user_id, propertyId=prop_id).first()
         if usp is None:
             return f"USP does not exist"
         
