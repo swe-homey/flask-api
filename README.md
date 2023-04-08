@@ -1,7 +1,8 @@
 ### Backend for *Homey*
 
 > A Flask REST API server.<br/>
-> - [Demo](https://youtu.be/4qLNeD5MUFQ)
+>
+> - [Demo](https://youtu.be/4qLNeD5MUFQ) / [Teaser](https://youtu.be/A9fdw31bSno)
 > - [Documentation](https://github.com/swe-homey/docs)
 
 <br/>
